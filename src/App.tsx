@@ -1,46 +1,86 @@
-import { useMemo, useState } from 'react'
-import { motion, useReducedMotion } from 'motion/react'
-import { Chart } from './Chart'
-import { Controls } from './Controls'
-import { project } from './project'
-import { runModel } from './science'
-import './styles.css'
+import { useEffect, useRef, useState } from "react";
+import "./styles.css";
 
-const defaults = Object.fromEntries(project.parameters.map((parameter) => [parameter.key, parameter.value]))
+type VoyagerRecord = {
+  source: { url: string; expectedBytes: number; sha256: string; archive: string; tutorial: string; credit: string };
+  header: { source_name: string; tstart: number; tsamp: number; foff: number; nchans: number; rawdatafile: string };
+  selection: { sourceShape: number[]; channelStart: number; channelStop: number; publishedHitFrequencyMHz: number; frequencyStartMHz: number; frequencyStopMHz: number; channelWidthHz: number; integrationSeconds: number; timeSamples: number; normalization: string };
+  timesSeconds: number[];
+  frequenciesMHz: number[];
+  waterfallRobustZ: number[][];
+  driftSearch: { method: string; trialsHzPerSecond: number[]; score: number[]; bestDriftHzPerSecond: number; bestScore: number; warning: string };
+};
 
-function Icon({ name, size = 20 }: { name: 'atom' | 'book' | 'github' | 'sliders'; size?: number }) {
-  const paths = {
-    atom: <><circle cx="12" cy="12" r="1.8"/><ellipse cx="12" cy="12" rx="9" ry="3.7"/><ellipse cx="12" cy="12" rx="9" ry="3.7" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="9" ry="3.7" transform="rotate(120 12 12)"/></>,
-    book: <><path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H11v17H7.5A3.5 3.5 0 0 0 4 22z"/><path d="M20 5.5A3.5 3.5 0 0 0 16.5 2H13v17h3.5A3.5 3.5 0 0 1 20 22z"/></>,
-    github: <path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.87c-2.78.6-3.37-1.18-3.37-1.18-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.9 1.53 2.35 1.09 2.92.83.09-.65.35-1.09.64-1.34-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.6 9.6 0 0 1 12 6.82a9.6 9.6 0 0 1 2.5.34c1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.86v2.76c0 .27.18.58.69.48A10 10 0 0 0 12 2z"/>,
-    sliders: <><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></>,
-  }
-  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>
+const DATA_URL = `${import.meta.env.BASE_URL}data/voyager1-waterfall.json`;
+
+function palette(value: number): [number, number, number] {
+  const t = Math.max(0, Math.min(1, (value + 3) / 23));
+  const stops = [[10, 8, 26], [39, 24, 82], [123, 45, 104], [238, 108, 61], [255, 239, 151]];
+  const scaled = t * (stops.length - 1);
+  const index = Math.min(stops.length - 2, Math.floor(scaled));
+  const fraction = scaled - index;
+  return stops[index].map((channel, i) => Math.round(channel + (stops[index + 1][i] - channel) * fraction)) as [number, number, number];
+}
+
+function Waterfall({ record, selected, onSelect }: { record: VoyagerRecord; selected: number; onSelect: (row: number) => void }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const node = canvas.current;
+    if (!node) return;
+    const context = node.getContext("2d");
+    if (!context) return;
+    const rows = record.waterfallRobustZ.length;
+    const columns = record.waterfallRobustZ[0].length;
+    node.width = columns;
+    node.height = rows;
+    const pixels = context.createImageData(columns, rows);
+    record.waterfallRobustZ.forEach((row, y) => row.forEach((value, x) => {
+      const [red, green, blue] = palette(value);
+      const offset = (y * columns + x) * 4;
+      pixels.data.set([red, green, blue, 255], offset);
+    }));
+    context.putImageData(pixels, 0, 0);
+  }, [record]);
+  return <div className="waterfall-frame"><canvas ref={canvas} aria-label="Real Voyager 1 radio power as frequency versus time" onClick={(event) => { const box = event.currentTarget.getBoundingClientRect(); onSelect(Math.min(record.timesSeconds.length - 1, Math.floor((event.clientY - box.top) / box.height * record.timesSeconds.length))); }} /><div className="row-cursor" style={{ top: `${(selected + .5) / record.timesSeconds.length * 100}%` }} /><span className="axis frequency">frequency →</span><span className="axis time">time →</span></div>;
+}
+
+function DriftCurve({ record }: { record: VoyagerRecord }) {
+  const width = 900, height = 220, pad = 28;
+  const min = Math.min(...record.driftSearch.score), max = Math.max(...record.driftSearch.score);
+  const points = record.driftSearch.score.map((score, index) => {
+    const x = pad + index / (record.driftSearch.score.length - 1) * (width - pad * 2);
+    const y = height - pad - (score - min) / (max - min || 1) * (height - pad * 2);
+    return `${x},${y}`;
+  }).join(" ");
+  const bestIndex = record.driftSearch.trialsHzPerSecond.indexOf(record.driftSearch.bestDriftHzPerSecond);
+  const bestX = pad + bestIndex / (record.driftSearch.score.length - 1) * (width - pad * 2);
+  return <svg className="drift-curve" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Shift-and-average score versus trial drift rate"><line x1={pad} x2={width-pad} y1={height-pad} y2={height-pad} /><polyline points={points} /><line className="best-line" x1={bestX} x2={bestX} y1={pad} y2={height-pad} /><text x={pad} y={height-6}>−2 Hz s⁻¹</text><text x={width-pad} y={height-6} textAnchor="end">+2 Hz s⁻¹</text></svg>;
 }
 
 export default function App() {
-  const [values, setValues] = useState<Record<string, number>>(defaults)
-  const reduceMotion = useReducedMotion()
-  const result = useMemo(() => runModel(values), [values])
-  const entrance = reduceMotion ? {} : { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 } }
-  return <div className="app" style={{'--accent':project.accent,'--accent-2':project.accent2} as React.CSSProperties}>
-    <a className="skip-link" href="#main">Skip to model</a>
-    <header className="topbar"><a className="brand" href="#top" aria-label={`${project.shortName} home`}><Icon name="atom" size={22}/><span>{project.shortName}</span></a><nav aria-label="Project links"><a href="#method"><Icon name="book"/>Method</a><a href="https://github.com/Biswajit1999" target="_blank" rel="noreferrer"><Icon name="github"/>GitHub</a></nav></header>
-    <main id="main">
-      <motion.section className="hero" {...entrance} transition={{type:'spring',stiffness:120,damping:20}}>
-        <div><span className="eyebrow">{project.eyebrow}</span><h1>{project.title}</h1><p className="thesis">{project.thesis}</p><p>{project.description}</p></div>
-        <div className="hero-orbit" aria-hidden="true"><span/><span/><span/><Icon name="sliders" size={34}/></div>
-      </motion.section>
-      <section className="workspace" aria-label="Interactive research workspace">
-        <Controls parameters={project.parameters} values={values} onChange={(key,value)=>setValues((current)=>({...current,[key]:value}))} onReset={()=>setValues(defaults)} />
-        <motion.div className="results" layout transition={{type:'spring',stiffness:180,damping:24}}>
-          <div className="metrics">{result.metrics.map((metric,index)=><motion.article className={`metric ${metric.tone ?? 'neutral'}`} key={metric.label} initial={reduceMotion?false:{opacity:0,scale:.96}} animate={{opacity:1,scale:1}} transition={{delay:reduceMotion?0:index*.04}}><span>{metric.label}</span><strong>{metric.value}</strong><p>{metric.detail}</p></motion.article>)}</div>
-          <Chart samples={result.samples} xLabel={project.xLabel} yLabel={project.yLabel} observedLabel={project.observedLabel} modelLabel={project.modelLabel}/>
-          <div className="conclusion" role="status" aria-live="polite"><span>Current interpretation</span><p>{result.conclusion}</p></div>
-        </motion.div>
+  const [record, setRecord] = useState<VoyagerRecord | null>(null);
+  const [error, setError] = useState("");
+  const [selected, setSelected] = useState(0);
+  useEffect(() => { fetch(DATA_URL).then((response) => { if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json(); }).then(setRecord).catch((reason) => setError(String(reason))); }, []);
+  if (error) return <main className="state">Could not open the observation receipt: {error}</main>;
+  if (!record) return <main className="state">Tuning to the archived observation…</main>;
+  const selectedSpectrum = record.waterfallRobustZ[selected];
+  const peakIndex = selectedSpectrum.indexOf(Math.max(...selectedSpectrum));
+  const peakFrequency = record.frequenciesMHz[peakIndex];
+  const officialDrift = -.373093;
+  return <>
+    <header className="topbar"><a href="#observation">BL / VOYAGER 1 / 2016</a><nav><a href="#observation">waterfall</a><a href="#search">de-doppler</a><a href="#receipt">receipt</a></nav></header>
+    <main id="observation">
+      <section className="signal-hero"><p className="kicker">KNOWN HUMAN TRANSMITTER · GREEN BANK TELESCOPE · REAL FILTERBANK DATA</p><h1>Before searching for <em>them,</em><br/>recover <strong>us.</strong></h1><div className="hero-note"><span>Calibration target</span><p>Voyager 1 is a ground-truth engineering carrier: a narrow, drifting signal whose origin is known. This benchmark asks whether the pipeline recovers it without inventing extraterrestrial significance.</p></div></section>
+      <section className="observation-console">
+        <div className="console-head"><div><span>WATERFALL / ROBUST Z</span><strong>{record.selection.frequencyStartMHz.toFixed(6)}—{record.selection.frequencyStopMHz.toFixed(6)} MHz</strong></div><div><span>TIME ON SOURCE</span><strong>{record.timesSeconds.at(-1)?.toFixed(1)} s</strong></div><div><span>SELECTED INTEGRATION</span><strong>{record.timesSeconds[selected].toFixed(1)} s</strong></div></div>
+        <Waterfall record={record} selected={selected} onSelect={setSelected}/>
+        <div className="spectrum-strip"><div><span>brightest selected channel</span><strong>{peakFrequency.toFixed(6)} MHz</strong></div><div><span>resolution</span><strong>{record.selection.channelWidthHz.toFixed(4)} Hz</strong></div><div><span>source matrix</span><strong>{record.selection.sourceShape.join(" × ")}</strong></div><div><span>display crop</span><strong>{record.selection.channelStop-record.selection.channelStart} channels</strong></div></div>
       </section>
-      <section id="method" className="method-section"><div><span className="kicker">Research contract</span><h2>What this model claims—and what it does not</h2><p>The workbench is an inspectable forward model for hypothesis formation and sensitivity analysis. It is not a substitute for instrument-specific calibration, Bayesian inference, or peer-reviewed validation.</p></div><div className="method-grid"><article><h3>Model chain</h3><ol>{project.methods.map((item)=><li key={item}>{item}</li>)}</ol></article><article><h3>Declared assumptions</h3><ul>{project.assumptions.map((item)=><li key={item}>{item}</li>)}</ul></article></div></section>
+      <section className="dedoppler" id="search"><div className="section-index">02 / SHIFT + AVERAGE</div><div className="dedoppler-title"><h2>The diagonal<br/>becomes a peak.</h2><div className="drift-result"><span>RECOVERED DRIFT</span><strong>{record.driftSearch.bestDriftHzPerSecond.toFixed(2)}</strong><small>Hz s⁻¹</small></div></div><DriftCurve record={record}/><div className="comparison"><article><span>THIS REDUCTION</span><strong>{record.driftSearch.bestDriftHzPerSecond.toFixed(3)} Hz s⁻¹</strong><p>brute-force interpolated shift-and-average</p></article><article><span>PUBLISHED TURBOSETI EXAMPLE</span><strong>{officialDrift.toFixed(3)} Hz s⁻¹</strong><p>strongest Voyager sample hit near 8419.297 MHz</p></article><article><span>ABSOLUTE DIFFERENCE</span><strong>{Math.abs(record.driftSearch.bestDriftHzPerSecond-officialDrift).toFixed(3)} Hz s⁻¹</strong><p>a reproducible regression target, not a detection claim</p></article></div></section>
+      <section className="receipt" id="receipt"><div><span className="section-index">03 / SOURCE RECEIPT</span><h2>Nothing up<br/>our sleeve.</h2></div><ol><li><b>01</b><div><strong>Berkeley source</strong><a href={record.source.url}>Voyager1.single_coarse.fine_res.h5 ↗</a></div></li><li><b>02</b><div><strong>Transfer integrity</strong><code>{record.source.expectedBytes.toLocaleString()} bytes · {record.source.sha256}</code></div></li><li><b>03</b><div><strong>Observation header</strong><code>MJD {record.header.tstart} · Δt {record.header.tsamp}s · Δf {(record.header.foff*1e6).toFixed(6)}Hz</code></div></li><li><b>04</b><div><strong>Reduction</strong><code>{record.selection.normalization}</code></div></li></ol></section>
+      <aside className="validity"><strong>VALIDITY BOUNDARY</strong><p>{record.driftSearch.warning} This single on-source excerpt does not perform RFI rejection, on/off cadence comparison, barycentric correction, survey completeness, or a trials-calibrated false-alarm analysis.</p></aside>
     </main>
-    <footer><span>Built by Biswajit Jana · Astrophysics & instrumentation</span><span>MIT · Reproducible browser model</span></footer>
-  </div>
+    <footer><span>{record.source.credit}</span><a href={record.source.archive}>OPEN DATA ARCHIVE ↗</a></footer>
+  </>;
 }
