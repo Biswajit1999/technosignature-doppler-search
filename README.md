@@ -5,6 +5,8 @@ An interactive narrow-band radio de-Doppler experiment for understanding coheren
 [![CI](https://github.com/Biswajit1999/technosignature-doppler-search/actions/workflows/ci.yml/badge.svg)](https://github.com/Biswajit1999/technosignature-doppler-search/actions/workflows/ci.yml)
 [![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
+**[Launch the interactive laboratory →](https://biswajit1999.github.io/technosignature-doppler-search/)**
+
 ## Motivation
 
 A narrow-band extraterrestrial transmitter would not generally remain in one frequency channel during an observation. Relative acceleration between transmitter, receiver, planets, moons, and observatory produces an apparent frequency drift. A de-Doppler search integrates power along many candidate slopes; a mismatch between injected and trial slopes smears the signal and reduces significance.
