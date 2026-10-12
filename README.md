@@ -26,6 +26,11 @@ python scripts/build_voyager_slice.py
 
 The 50.5 MB source is ignored by Git; the compact derived waterfall, complete source URL, observation header, reduction contract, and source hash are versioned and tested.
 
+The compact real-data product now has drift-grid convergence, leave-one-
+integration-out, and circular-shift null validations. Run
+`python scripts/validate_voyager_drift.py`; see
+[`docs/VOYAGER_DRIFT_VALIDATION.md`](docs/VOYAGER_DRIFT_VALIDATION.md).
+
 ## Research question
 
 How should drift-trial spacing scale with observation length and channel width, and when does a nominal peak remain interesting after the number of searched trials is considered?

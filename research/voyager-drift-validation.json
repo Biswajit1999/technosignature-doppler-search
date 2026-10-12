@@ -1,0 +1,128 @@
+{
+  "data_kind": "real Green Bank Telescope Voyager 1 engineering-carrier HDF5 excerpt",
+  "source_sha256": "c9a9a54f4140e3754ffb2455fae4eeb2eb70c8207123116ee953e4fce15c36ac",
+  "grid_convergence": [
+    {
+      "spacing_hz_per_s": 0.1,
+      "trial_count": 5,
+      "best_drift_hz_per_s": -0.20000000000000007,
+      "best_score": 18.666533664671338
+    },
+    {
+      "spacing_hz_per_s": 0.05,
+      "trial_count": 9,
+      "best_drift_hz_per_s": -0.34999999999999976,
+      "best_score": 18.94111797646353
+    },
+    {
+      "spacing_hz_per_s": 0.02,
+      "trial_count": 21,
+      "best_drift_hz_per_s": -0.3799999999999998,
+      "best_score": 19.40400415866116
+    },
+    {
+      "spacing_hz_per_s": 0.01,
+      "trial_count": 41,
+      "best_drift_hz_per_s": -0.3799999999999998,
+      "best_score": 19.40400415866116
+    },
+    {
+      "spacing_hz_per_s": 0.005,
+      "trial_count": 81,
+      "best_drift_hz_per_s": -0.3799999999999998,
+      "best_score": 19.40400415866116
+    }
+  ],
+  "integration_jackknife": [
+    {
+      "omitted_integration": 0,
+      "best_drift_hz_per_s": -0.365,
+      "best_score": 20.674530235035082
+    },
+    {
+      "omitted_integration": 1,
+      "best_drift_hz_per_s": -0.395,
+      "best_score": 20.662012327948737
+    },
+    {
+      "omitted_integration": 2,
+      "best_drift_hz_per_s": -0.38,
+      "best_score": 20.65276705844696
+    },
+    {
+      "omitted_integration": 3,
+      "best_drift_hz_per_s": -0.38,
+      "best_score": 20.64049497126812
+    },
+    {
+      "omitted_integration": 4,
+      "best_drift_hz_per_s": -0.38,
+      "best_score": 20.667187731462327
+    },
+    {
+      "omitted_integration": 5,
+      "best_drift_hz_per_s": -0.38,
+      "best_score": 20.733160470222323
+    },
+    {
+      "omitted_integration": 6,
+      "best_drift_hz_per_s": -0.38,
+      "best_score": 20.67916283841019
+    },
+    {
+      "omitted_integration": 7,
+      "best_drift_hz_per_s": -0.38,
+      "best_score": 20.661662576191944
+    },
+    {
+      "omitted_integration": 8,
+      "best_drift_hz_per_s": -0.38,
+      "best_score": 20.36796294413224
+    },
+    {
+      "omitted_integration": 9,
+      "best_drift_hz_per_s": -0.38,
+      "best_score": 20.61703914554962
+    },
+    {
+      "omitted_integration": 10,
+      "best_drift_hz_per_s": -0.41500000000000004,
+      "best_score": 20.34458702203764
+    },
+    {
+      "omitted_integration": 11,
+      "best_drift_hz_per_s": -0.38,
+      "best_score": 20.530927497801603
+    },
+    {
+      "omitted_integration": 12,
+      "best_drift_hz_per_s": -0.535,
+      "best_score": 20.39324227353813
+    },
+    {
+      "omitted_integration": 13,
+      "best_drift_hz_per_s": -0.38,
+      "best_score": 20.7384716566705
+    },
+    {
+      "omitted_integration": 14,
+      "best_drift_hz_per_s": -0.38,
+      "best_score": 20.69111615591677
+    },
+    {
+      "omitted_integration": 15,
+      "best_drift_hz_per_s": -0.38,
+      "best_score": 20.610395774908326
+    }
+  ],
+  "circular_shift_null": {
+    "replicates": 500,
+    "seed": 20261012,
+    "observed_max_score": 19.40400415866118,
+    "null_median_max_score": 32.18566570985139,
+    "null_p95_max_score": 51.76441622608909,
+    "exceedances": 469,
+    "empirical_p_upper": 0.93812375249501
+  },
+  "limitations": "The excerpt was deliberately selected around a known human transmitter. The scrambled null is a pipeline diagnostic, not a survey-calibrated false-alarm probability or technosignature claim."
+}
