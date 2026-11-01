@@ -1,0 +1,17 @@
+name: Fixed-centre injection audit
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  numerical:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install 'numpy>=2,<3' 'matplotlib>=3.9,<4'
+      - run: python -m unittest discover -s tests -p 'test_injection_audit.py' -v
+      - run: python scripts/run_injection_audit.py --output /tmp/injection.json --figure /tmp/injection.png
