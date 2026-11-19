@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import validation from "../research/voyager-drift-validation.json";
+import validationFigure from "../research/voyager-drift-validation.png";
+import jackknifeTable from "../research/voyager-integration-jackknife.csv?url";
 import "./styles.css";
 
 type VoyagerRecord = {
@@ -12,6 +15,22 @@ type VoyagerRecord = {
 };
 
 const DATA_URL = `${import.meta.env.BASE_URL}data/voyager1-waterfall.json`;
+
+function ValidationEvidence() {
+  const nullCheck = validation.circular_shift_null;
+  const leaveOneOut = validation.integration_jackknife.map(row => row.best_drift_hz_per_s);
+  return (
+    <section className="validation-evidence" id="validation" aria-labelledby="validation-title">
+      <h2 id="validation-title">How stable is the drift estimate?</h2>
+      <p>Leaving one integration out at a time gave best trials from {Math.min(...leaveOneOut).toFixed(3)} to {Math.max(...leaveOneOut).toFixed(3)} Hz/s. In the circular-shift check, {nullCheck.exceedances} of {nullCheck.replicates} scrambles equalled or exceeded the observed peak score.</p>
+      <figure>
+        <img src={validationFigure} width={1980} height={810} loading="lazy" alt="Drift grid convergence and the recovered drift when each of the 16 integrations is left out in turn" />
+        <figcaption>The fine grid gives a reproducible peak for the full excerpt. Omitting an integration can change which trial wins. The scramble comparison applies to this selected excerpt and search procedure.</figcaption>
+      </figure>
+      <p><a href={jackknifeTable} download="voyager-integration-jackknife.csv">Download the leave-one-out table</a> · <a href="https://github.com/Biswajit1999/technosignature-doppler-search/blob/main/docs/VOYAGER_DRIFT_VALIDATION.md">Read the validation method</a></p>
+    </section>
+  );
+}
 
 function palette(value: number): [number, number, number] {
   const t = Math.max(0, Math.min(1, (value + 3) / 23));
@@ -69,7 +88,7 @@ export default function App() {
   const peakFrequency = record.frequenciesMHz[peakIndex];
   const officialDrift = -.373093;
   return <>
-    <header className="topbar"><a href="#observation">BL / VOYAGER 1 / 2016</a><nav><a href="#observation">waterfall</a><a href="#search">de-doppler</a><a href="#receipt">receipt</a></nav></header>
+    <header className="topbar"><a href="#observation">BL / VOYAGER 1 / 2016</a><nav><a href="#observation">waterfall</a><a href="#search">de-doppler</a><a href="#validation">validation</a><a href="#receipt">receipt</a></nav></header>
     <main id="observation">
       <section className="signal-hero"><p className="kicker">KNOWN HUMAN TRANSMITTER · GREEN BANK TELESCOPE · REAL FILTERBANK DATA</p><h1>Before searching for <em>them,</em><br/>recover <strong>us.</strong></h1><div className="hero-note"><span>Calibration target</span><p>Voyager 1 is a ground-truth engineering carrier: a narrow, drifting signal whose origin is known. This benchmark asks whether the pipeline recovers it without inventing extraterrestrial significance.</p></div></section>
       <section className="observation-console">
@@ -79,6 +98,7 @@ export default function App() {
       </section>
       <section className="dedoppler" id="search"><div className="section-index">02 / SHIFT + AVERAGE</div><div className="dedoppler-title"><h2>The diagonal<br/>becomes a peak.</h2><div className="drift-result"><span>RECOVERED DRIFT</span><strong>{record.driftSearch.bestDriftHzPerSecond.toFixed(2)}</strong><small>Hz s⁻¹</small></div></div><DriftCurve record={record}/><div className="comparison"><article><span>THIS REDUCTION</span><strong>{record.driftSearch.bestDriftHzPerSecond.toFixed(3)} Hz s⁻¹</strong><p>brute-force interpolated shift-and-average</p></article><article><span>PUBLISHED TURBOSETI EXAMPLE</span><strong>{officialDrift.toFixed(3)} Hz s⁻¹</strong><p>strongest Voyager sample hit near 8419.297 MHz</p></article><article><span>ABSOLUTE DIFFERENCE</span><strong>{Math.abs(record.driftSearch.bestDriftHzPerSecond-officialDrift).toFixed(3)} Hz s⁻¹</strong><p>a reproducible regression target, not a detection claim</p></article></div></section>
       <section className="receipt" id="receipt"><div><span className="section-index">03 / SOURCE RECEIPT</span><h2>Nothing up<br/>our sleeve.</h2></div><ol><li><b>01</b><div><strong>Berkeley source</strong><a href={record.source.url}>Voyager1.single_coarse.fine_res.h5 ↗</a></div></li><li><b>02</b><div><strong>Transfer integrity</strong><code>{record.source.expectedBytes.toLocaleString()} bytes · {record.source.sha256}</code></div></li><li><b>03</b><div><strong>Observation header</strong><code>MJD {record.header.tstart} · Δt {record.header.tsamp}s · Δf {(record.header.foff*1e6).toFixed(6)}Hz</code></div></li><li><b>04</b><div><strong>Reduction</strong><code>{record.selection.normalization}</code></div></li></ol></section>
+      <ValidationEvidence />
       <aside className="validity"><strong>VALIDITY BOUNDARY</strong><p>{record.driftSearch.warning} This single on-source excerpt does not perform RFI rejection, on/off cadence comparison, barycentric correction, survey completeness, or a trials-calibrated false-alarm analysis.</p></aside>
     </main>
     <footer><span>{record.source.credit}</span><a href={record.source.archive}>OPEN DATA ARCHIVE ↗</a></footer>
