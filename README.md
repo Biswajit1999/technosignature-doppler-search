@@ -31,6 +31,10 @@ integration-out, and circular-shift null validations. Run
 `python scripts/validate_voyager_drift.py`; see
 [`docs/VOYAGER_DRIFT_VALIDATION.md`](docs/VOYAGER_DRIFT_VALIDATION.md).
 
+![Voyager drift-grid convergence and leave-one-integration-out sensitivity](research/voyager-drift-validation.png)
+
+The fine grids select −0.380 Hz/s, but leaving out one time integration can move the best trial to −0.535 Hz/s. In the circular-shift check, 469 of 500 scrambled runs equalled or exceeded the observed peak score. The strong sensitivity to sampling and the scrambled-null result limit what can be inferred from a peak alone. [View the checks in the browser](https://biswajit1999.github.io/technosignature-doppler-search/#validation) or [download the validation data](research/voyager-drift-validation.json).
+
 ## Research question
 
 How should drift-trial spacing scale with observation length and channel width, and when does a nominal peak remain interesting after the number of searched trials is considered?
